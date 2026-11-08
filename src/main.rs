@@ -38,8 +38,14 @@ struct BlockUndo {
   chains: Vec<(String, Option<Chain>)>,
 }
 
+/// What `state.json` holds. An older file is set aside and D:// is read again
+/// from the start: 2 added the registrar key and reveal payouts.
+const STATE_VERSION: u64 = 2;
+
 #[derive(Default, Serialize, Deserialize)]
 struct Saved {
+  #[serde(default)]
+  version: u64,
   next_height: u64,
   records: Vec<DfRecord>,
   chains: Chains,
@@ -47,11 +53,19 @@ struct Saved {
 }
 
 fn load(path: &PathBuf, start: u64) -> Result<Saved> {
+  let fresh = Saved { version: STATE_VERSION, next_height: start, ..Default::default() };
   if !path.exists() {
-    return Ok(Saved { next_height: start, ..Default::default() });
+    return Ok(fresh);
   }
   let raw = std::fs::read(path).with_context(|| format!("read {}", path.display()))?;
-  serde_json::from_slice(&raw).with_context(|| format!("parse {}", path.display()))
+  let saved: Saved = serde_json::from_slice(&raw).with_context(|| format!("parse {}", path.display()))?;
+  if saved.version < STATE_VERSION {
+    let old = path.with_extension(format!("v{}.json", saved.version));
+    std::fs::rename(path, &old)?;
+    warn!("{} is from an older version, kept as {}; reading D:// again from block {start}", path.display(), old.display());
+    return Ok(fresh);
+  }
+  Ok(saved)
 }
 
 fn save(path: &PathBuf, s: &Saved) -> Result<()> {

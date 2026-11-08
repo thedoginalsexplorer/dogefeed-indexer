@@ -30,9 +30,16 @@ pub struct DfRecord {
   pub label: Option<String>,
   #[serde(default)]
   pub ops: Vec<String>,
+  /// Who it pays, and how much: from the OP_RETURN payment, or for a comment
+  /// or quote, what its reveal pays the original author it answers.
   pub recipient: Option<String>,
   pub recipient_koinu: Option<u64>,
+  /// What it pays DogeFeed.
   pub fee_koinu: Option<u64>,
+  /// The registrar key (`kid`) whose signature on it verifies: DogeFeed's
+  /// signature, showing it was issued through DogeFeed.
+  #[serde(default)]
+  pub registrar: Option<String>,
   #[serde(default)]
   pub split_body: bool,
   pub valid: bool,
@@ -188,8 +195,16 @@ impl Index {
       body: dproto::jcs(&rec.value).ok(),
       label: rec.keylink.as_ref().map(|k| k.label.clone()),
       ops: rec.keylink.as_ref().map(|k| k.ops.clone()).unwrap_or_default(),
+      registrar: dproto::attestation_key(&rec).map(str::to_string),
+      fee_koinu: Some(dproto::paid_to(outputs, dproto::FEE_ADDRESS)),
       ..base
     };
+    if matches!(rec.rtype, RecordType::Comment | RecordType::Quote)
+      && let Some(parent) = rec.reference.as_deref().and_then(|p| self.by_inscription(p))
+    {
+      r.recipient_koinu = Some(dproto::paid_to(outputs, &parent.author));
+      r.recipient = Some(parent.author.clone());
+    }
     let check = || -> Result<(), String> {
       if content_type.split(';').next().unwrap_or("").trim() != "application/json" {
         return Err(format!("content type is {content_type:?}, not application/json"));
@@ -239,9 +254,7 @@ impl Index {
     outputs: &[TxOut],
   ) -> Option<DfRecord> {
     let ptx = PaymentTx { inputs, input_addresses: addrs, outputs };
-    let verdict = dproto::verify_payment(&ptx, &dproto::registrar_pubkeys(), |t| self.post_candidates(t), |a| {
-      self.keys_of.get(a).cloned().unwrap_or_default()
-    });
+    let verdict = dproto::verify_payment_by_key(&ptx, |t| self.post_candidates(t), |a| self.keys_of.get(a).cloned().unwrap_or_default());
     let payer = addrs.first().cloned().flatten().unwrap_or_default();
     let mut r = DfRecord { txid: txid.into(), height, tx_index, time, author: payer.clone(), account: payer, ..Default::default() };
     match verdict {
@@ -255,7 +268,8 @@ impl Index {
           .unwrap_or_else(|| "unknown".into());
         r.reason = Some(e);
       }
-      Ok(Some(p)) => {
+      Ok(Some((p, kid))) => {
+        r.registrar = Some(kid.to_string());
         r.kind = p.op.name().into();
         r.account = if p.op == Op::Keyrevoke { p.author.clone() } else { self.account_for(&p.author, p.op.name(), height) };
         r.author = p.author.clone();

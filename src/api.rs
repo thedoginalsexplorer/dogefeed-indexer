@@ -68,6 +68,8 @@ pub fn record_json(tip: u64, r: &DfRecord) -> Value {
     "recipient": r.recipient,
     "recipientKoinu": r.recipient_koinu,
     "feeKoinu": r.fee_koinu,
+    "registrar": r.registrar,
+    "signedByDogeFeed": r.registrar.is_some(),
     "splitBody": r.split_body,
     "body": r.body.as_deref().and_then(|b| serde_json::from_str::<Value>(b).ok()),
   })

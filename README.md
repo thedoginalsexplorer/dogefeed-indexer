@@ -80,6 +80,16 @@ The same shape as `https://explorer.doginals.store/v1/dfeed`:
 
 `before` is a record's `cursor` (`height:position`). Amounts are integer koinu (1 DOGE = 100,000,000).
 
+Each record carries:
+- `author`: who signed it (`aip.addr`, or the address a payment spends from).
+- `registrar` and `signedByDogeFeed`: the DogeFeed registrar key whose signature on it verifies (`dfreg1`), which shows it was issued through DogeFeed. For an inscription this is the `att` attestation. For a payment it is the signature in its OP_RETURN.
+- `feeKoinu`: what it pays DogeFeed.
+- `recipient` and `recipientKoinu`: who it pays and how much. For a comment or quote this is what its reveal pays the original author of the post it answers (0.86 DOGE in DogeFeed's test records).
+
+This indexer has no names index. The Doginals Explorer adds a `names` map to each response: the `.dogefeed` or `.doge` name to show for each address.
+
+`state.json` from an older version is set aside as `state.v<N>.json`, and D:// is read again from `DFEED_START`.
+
 ## Tests
 
 ```bash

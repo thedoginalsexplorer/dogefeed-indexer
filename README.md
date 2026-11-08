@@ -2,7 +2,7 @@
 
 A standalone indexer and JSON API for **D://**, DogeFeed's protocol on Dogecoin. It reads a Dogecoin Core node block by block, checks every D:// record against the v1 standard, and serves what it finds as JSON.
 
-The same checks run in [The Doginals Explorer](https://explorer.doginals.store/dfeed) (DogeOrd). They live in the `dproto` crate in this repo.
+The same checks run in [The Doginals Explorer](https://thedoginalsexplorer.com/dfeed) (DogeOrd). They live in the `dproto` crate in this repo.
 
 ## What D:// is
 
@@ -69,7 +69,7 @@ Everything is kept in memory and saved to `state.json` about once a minute, so a
 
 ## API
 
-The same shape as `https://explorer.doginals.store/v1/dfeed`:
+The same shape as `https://thedoginalsexplorer.com/v1/dfeed`:
 
 - `GET /v1/dfeed`: progress, totals, the fee address and the registrar keys.
 - `GET /v1/dfeed/feed?before=&limit=`: valid posts and quotes, newest first, each with confirmed likes, branches, comments, quotes and tips.
